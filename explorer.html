@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chain Explorer</title>
+<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f2f4f7;
+    color: #222;
+  }
+
+  header {
+    padding: 20px;
+    text-align: center;
+    background: #fff;
+    border-bottom: 1px solid #ddd;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 32px;
+    font-weight: 600;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 20px;
+  }
+
+  /* Connection bar */
+  .connect-bar {
+    background: #fff;
+    border: 1px solid #ddd;
+    padding: 14px;
+    border-radius: 8px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .connect-bar input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+  .connect-bar button {
+    padding: 10px 16px;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    background: red;
+    border-radius: 50%;
+  }
+  .status-dot.ok { background: #16a34a; }
+
+  /* KPI grid */
+  .kpi-grid {
+    margin-top: 18px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .kpi {
+    background: #fff;
+    border: 1px solid #ddd;
+    padding: 14px;
+    border-radius: 8px;
+  }
+  .kpi-title { font-size: 13px; color: #555; }
+  .kpi-value { font-size: 20px; font-weight: bold; color: #2563eb; margin-top: 6px; }
+
+  /* Tabs */
+  .tabs {
+    margin-top: 25px;
+    display: flex;
+    gap: 10px;
+  }
+  .tab-btn {
+    padding: 10px 16px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    background: #e5e7eb;
+    cursor: pointer;
+  }
+  .tab-btn.active {
+    background: #2563eb;
+    color: white;
+    border-color: #2563eb;
+  }
+
+  .panel {
+    background: #fff;
+    border: 1px solid #ddd;
+    margin-top: 15px;
+    padding: 14px;
+    border-radius: 8px;
+  }
+  .panel h2 {
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+  }
+
+  /* Lists */
+  .mono {
+    font-family: Consolas, monospace;
+    font-size: 12px;
+    word-break: break-all;
+  }
+  .block-item, .account-item {
+    padding: 12px;
+    border: 1px solid #eee;
+    background: #fafafa;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .block-item:hover, .account-item:hover {
+    background: #e8eef7;
+  }
+
+  /* Tx table */
+  table { width: 100%; border-collapse: collapse; }
+  th, td {
+    padding: 10px 6px;
+    border-bottom: 1px solid #eee;
+    font-size: 12px;
+  }
+  th {
+    background: #f4f6fa;
+    border-bottom: 2px solid #ddd;
+  }
+
+  /* Modal */
+  .modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    display: none;
+    place-items: center;
+  }
+  .modal.active { display: grid; }
+  .modal-content {
+    width: min(850px, 95%);
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+  }
+  .close-btn {
+    background: #dc2626;
+    color: white;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    float: right;
+  }
+
+  .detail-row { margin-bottom: 8px; }
+  .detail-label { font-size: 13px; color: #555; }
+  .detail-value { font-family: Consolas; font-size: 13px; }
+
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>Chain Explorer</h1>
+</header>
+
+<div class="container">
+
+  <!-- Connection -->
+  <div class="connect-bar">
+    <input id="rpc" value="http://192.168.1.72:7545">
+    <button id="connectBtn">Connect</button>
+    <div id="dot" class="status-dot"></div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-title">Latest Block</div><div id="k_block" class="kpi-value">-</div></div>
+    <div class="kpi"><div class="kpi-title">Chain ID</div><div id="k_chain" class="kpi-value">-</div></div>
+    <div class="kpi"><div class="kpi-title">Gas Price (Gwei)</div><div id="k_gas" class="kpi-value">-</div></div>
+    <div class="kpi"><div class="kpi-title">Client</div><div id="k_client" class="kpi-value">-</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="blocks">Blocks</button>
+    <button class="tab-btn" data-tab="txs">Transactions</button>
+    <button class="tab-btn" data-tab="accounts">Accounts</button>
+  </div>
+
+  <!-- Blocks Panel -->
+  <div class="panel" id="panel-blocks">
+    <h2>Recent Blocks</h2>
+    <div id="blocks"></div>
+  </div>
+
+  <!-- Transactions Panel -->
+  <div class="panel" id="panel-txs" style="display:none;">
+    <h2>Recent Transactions</h2>
+    <table>
+      <thead><tr><th>Hash</th><th>From</th><th>To</th><th>Value</th></tr></thead>
+      <tbody id="txs"></tbody>
+    </table>
+  </div>
+
+  <!-- Accounts Panel -->
+  <div class="panel" id="panel-accounts" style="display:none;">
+    <h2>Accounts</h2>
+    <div id="accounts"></div>
+  </div>
+
+</div>
+
+<!-- Modal -->
+<div class="modal" id="modal">
+  <div class="modal-content">
+    <button class="close-btn" id="closeModal">Close</button>
+    <h3 style="margin-top:0;">Details</h3>
+    <div id="modalDetails"></div>
+  </div>
+</div>
+
+
+<script>
+const $ = s => document.querySelector(s);
+let web3;
+const seenBlocks = new Map();
+
+/******** CONNECT ********/
+async function connect() {
+  try {
+    web3 = new Web3($("#rpc").value);
+
+    const client = await web3.eth.getNodeInfo();
+    const chainId = await web3.eth.getChainId();
+    const gas = await web3.eth.getGasPrice();
+
+    $("#k_client").textContent = client.split('/')[0];
+    $("#k_chain").textContent = chainId;
+    $("#k_gas").textContent = (Number(gas) / 1e9).toFixed(2);
+
+    $("#dot").classList.add("ok");
+
+    poll();
+    setInterval(poll, 3000);
+
+    loadAccounts();
+
+  } catch(err) { alert(err.message); }
+}
+
+/******** FETCH BLOCKCHAIN ********/
+async function poll() {
+  const latest = await web3.eth.getBlockNumber();
+  $("#k_block").textContent = latest;
+
+  for (let i = latest; i > latest - 15 && i >= 0; i--) {
+    if (!seenBlocks.has(i)) {
+      const b = await web3.eth.getBlock(i, true);
+      if (b) seenBlocks.set(i, b);
+    }
+  }
+
+  renderBlocks();
+  renderTxs();
+}
+
+/******** RENDER BLOCK LIST ********/
+function renderBlocks() {
+  const arr = Array.from(seenBlocks.values()).sort((a,b)=>b.number-a.number);
+  $("#blocks").innerHTML = arr.map(b => `
+    <div class="block-item" data-block="${b.number}">
+      <strong>#${b.number}</strong><br>
+      <span class="mono">${b.hash}</span><br>
+      <span class="mono">${new Date(b.timestamp * 1000).toLocaleTimeString()}</span>
+    </div>
+  `).join("");
+
+  document.querySelectorAll(".block-item").forEach(el => {
+    el.onclick = () => showBlockModal(seenBlocks.get(Number(el.dataset.block)));
+  });
+}
+
+/******** RENDER TRANSACTIONS ********/
+function renderTxs() {
+  const all = [];
+  for (const b of seenBlocks.values()) all.push(...b.transactions);
+
+  const arr = all.sort((a,b)=>b.blockNumber-a.blockNumber).slice(0,40);
+
+  $("#txs").innerHTML = arr.map(tx => `
+    <tr data-hash="${tx.hash}">
+      <td class="mono">${tx.hash}</td>
+      <td class="mono">${tx.from}</td>
+      <td class="mono">${tx.to}</td>
+      <td class="mono">${web3.utils.fromWei(tx.value,"ether")} ETH</td>
+    </tr>
+  `).join("");
+
+  document.querySelectorAll("#txs tr").forEach(tr => {
+    tr.onclick = ()=>showTxModal(tr.dataset.hash);
+  });
+}
+
+/******** LOAD ACCOUNTS ********/
+async function loadAccounts() {
+  const acc = await web3.eth.getAccounts();
+
+  $("#accounts").innerHTML = "";
+
+  for (const a of acc) {
+    const bal = await web3.eth.getBalance(a);
+    $("#accounts").innerHTML += `
+      <div class="account-item" data-addr="${a}">
+        <div><strong>${a}</strong></div>
+        <div class="mono">${web3.utils.fromWei(bal,"ether")} ETH</div>
+      </div>
+    `;
+  }
+
+  document.querySelectorAll(".account-item").forEach(el => {
+    el.onclick = () => showAccountModal(el.dataset.addr);
+  });
+}
+
+/******** MODALS ********/
+function showBlockModal(b) {
+  $("#modalDetails").innerHTML = `
+    <div class="detail-row"><span class="detail-label">Block Number:</span> <span class="detail-value">${b.number}</span></div>
+    <div class="detail-row"><span class="detail-label">Hash:</span> <span class="detail-value">${b.hash}</span></div>
+    <div class="detail-row"><span class="detail-label">Miner:</span> <span class="detail-value">${b.miner}</span></div>
+    <div class="detail-row"><span class="detail-label">Tx Count:</span> <span class="detail-value">${b.transactions.length}</span></div>
+  `;
+  $("#modal").classList.add("active");
+}
+
+async function showTxModal(hash) {
+  const tx = await web3.eth.getTransaction(hash);
+  const rc = await web3.eth.getTransactionReceipt(hash);
+
+  let logsHTML = "";
+  rc.logs.forEach((l,i)=>{
+    logsHTML += `
+      <div class="detail-row">
+        <div class="detail-label">Log ${i}:</div>
+        <div class="detail-value">
+          <div><strong>Address:</strong> ${l.address}</div>
+          <div><strong>Topics:</strong> ${l.topics.join(", ")}</div>
+          <div><strong>Data:</strong> ${l.data}</div>
+        </div>
+      </div>
+    `;
+  });
+
+  $("#modalDetails").innerHTML = `
+    <div class="detail-row"><span class="detail-label">Tx Hash:</span> <span class="detail-value">${tx.hash}</span></div>
+    <div class="detail-row"><span class="detail-label">From:</span> <span class="detail-value">${tx.from}</span></div>
+    <div class="detail-row"><span class="detail-label">To:</span> <span class="detail-value">${tx.to}</span></div>
+    <div class="detail-row"><span class="detail-label">Value:</span> <span class="detail-value">${web3.utils.fromWei(tx.value,"ether")} ETH</span></div>
+    <div class="detail-row"><span class="detail-label">Block:</span> <span class="detail-value">${tx.blockNumber}</span></div>
+    <div class="detail-row"><span class="detail-label">Status:</span> <span class="detail-value">${rc.status?"Success ✅":"Failed ❌"}</span></div>
+
+    <h4>Logs</h4>
+    ${logsHTML || "<div>No logs</div>"}
+  `;
+
+  $("#modal").classList.add("active");
+}
+
+async function showAccountModal(addr) {
+  const bal = await web3.eth.getBalance(addr);
+  const nonce = await web3.eth.getTransactionCount(addr);
+  const code = await web3.eth.getCode(addr);
+
+  $("#modalDetails").innerHTML = `
+    <div class="detail-row"><span class="detail-label">Address:</span> <span class="detail-value">${addr}</span></div>
+    <div class="detail-row"><span class="detail-label">Balance:</span> <span class="detail-value">${web3.utils.fromWei(bal,"ether")} ETH</span></div>
+    <div class="detail-row"><span class="detail-label">Tx Count (Nonce):</span> <span class="detail-value">${nonce}</span></div>
+    <div class="detail-row"><span class="detail-label">Code Size:</span> <span class="detail-value">${code === "0x" ? "Externally Owned Account" : (code.length/2)+" bytes (Contract)"}</span></div>
+  `;
+
+  $("#modal").classList.add("active");
+}
+
+/******** TABS ********/
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.onclick = ()=>{
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+
+    document.querySelectorAll(".panel").forEach(p=>p.style.display="none");
+    $("#panel-" + btn.dataset.tab).style.display = "block";
+  };
+});
+
+$("#connectBtn").onclick = connect;
+$("#closeModal").onclick = () => $("#modal").classList.remove("active");
+</script>
+
+</body>
+</html>

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>⚡ Live Blockchain Vote Counter ⚡</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap');
+
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: radial-gradient(circle at top, #0a0c1a, #01030a);
+      color: #fff;
+      overflow: hidden;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 3em;
+      margin-top: 60px;
+      color: #00fff0;
+      text-shadow: 0 0 15px #00fff0, 0 0 30px #00c3ff;
+      animation: glow 2.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes glow {
+      from { text-shadow: 0 0 15px #00fff0; }
+      to { text-shadow: 0 0 40px #00fff0, 0 0 80px #007aff; }
+    }
+
+    .cards {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 60px;
+      gap: 40px;
+    }
+
+    .card {
+      background: linear-gradient(145deg, #151830, #1c2040);
+      border: 2px solid #00fff080;
+      box-shadow: 0 0 20px #00fff022, inset 0 0 20px #00fff011;
+      border-radius: 20px;
+      padding: 40px 70px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.6s ease, box-shadow 0.6s ease;
+    }
+
+    .card:hover {
+      transform: scale(1.08);
+      box-shadow: 0 0 40px #00fff044, inset 0 0 30px #00fff033;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: conic-gradient(from 0deg, transparent, #00fff0 20%, transparent 25%);
+      animation: spin 4s linear infinite;
+      z-index: 0;
+      opacity: 0.3;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0); }
+      to { transform: rotate(360deg); }
+    }
+
+    .card-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .vote-number {
+      display: block;
+      font-size: 3em;
+      color: #00fff0;
+      margin-top: 20px;
+      font-weight: 700;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { text-shadow: 0 0 10px #00fff0; }
+      50% { text-shadow: 0 0 30px #00fff0, 0 0 60px #007aff; }
+    }
+
+    #status {
+      margin-top: 50px;
+      font-size: 18px;
+      color: #aaa;
+      animation: fadeIn 1s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .dots::after {
+      content: '';
+      display: inline-block;
+      width: 1em;
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+
+    @keyframes dots {
+      0%, 20% { content: ''; }
+      40% { content: '.'; }
+      60% { content: '..'; }
+      80%, 100% { content: '...'; }
+    }
+
+    /* Floating Orbs Background */
+    .orb {
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #00fff055, transparent);
+      filter: blur(80px);
+      animation: float 15s ease-in-out infinite;
+    }
+
+    .orb:nth-child(1) { top: 10%; left: 5%; animation-delay: 0s; }
+    .orb:nth-child(2) { top: 70%; right: 10%; animation-delay: 5s; background: radial-gradient(circle, #007aff55, transparent); }
+    .orb:nth-child(3) { bottom: 20%; left: 50%; animation-delay: 10s; background: radial-gradient(circle, #00ffae55, transparent); }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) scale(1); }
+      50% { transform: translateY(-40px) scale(1.2); }
+    }
+
+    /* Neon Particle Lines */
+    canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -1;
+    }
+
+  </style>
+</head>
+<body>
+  <canvas id="bg"></canvas>
+  <div class="orb"></div>
+  <div class="orb"></div>
+  <div class="orb"></div>
+
+  <h1>⚡ Live Blockchain Vote Counter ⚡</h1>
+
+  <div class="cards">
+    <div class="card"><div class="card-content">Candidate 1<span id="c1" class="vote-number">0</span></div></div>
+    <div class="card"><div class="card-content">Candidate 2<span id="c2" class="vote-number">0</span></div></div>
+    <div class="card"><div class="card-content">Candidate 3<span id="c3" class="vote-number">0</span></div></div>
+  </div>
+
+  <div id="status" class="dots">Connecting to blockchain</div>
+
+  <script>
+    // Neon moving particle background
+    const canvas = document.getElementById("bg");
+    const ctx = canvas.getContext("2d");
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+
+    let particles = [];
+    for (let i = 0; i < 100; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        r: Math.random() * 2 + 1
+      });
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#00fff088";
+      for (let p of particles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+      }
+      requestAnimationFrame(animateParticles);
+    }
+    animateParticles();
+
+    const GANACHE_URL = "http://192.168.1.72:7545";
+    const CONTRACT_ADDRESS = "0xc0515470ff3bA418763974fb88f11f87d78dc648";
+
+    async function load() {
+      try {
+        const web3 = new Web3(new Web3.providers.HttpProvider(GANACHE_URL));
+        const abi = await fetch("build/contracts/Voting.json")
+          .then(res => res.json())
+          .then(j => j.abi);
+        const contract = new web3.eth.Contract(abi, CONTRACT_ADDRESS);
+
+        document.getElementById('status').innerText = "✅ Connected to blockchain";
+
+        async function animateValue(id, start, end, duration) {
+          const obj = document.getElementById(id);
+          const range = end - start;
+          const startTime = performance.now();
+
+          function updateValue(currentTime) {
+            const progress = Math.min((currentTime - startTime) / duration, 1);
+            const value = Math.floor(start + range * progress);
+            obj.textContent = value;
+            if (progress < 1) requestAnimationFrame(updateValue);
+          }
+          requestAnimationFrame(updateValue);
+        }
+
+        async function update() {
+          try {
+            const c1 = parseInt(await contract.methods.getVotes("Candidate 1").call());
+            const c2 = parseInt(await contract.methods.getVotes("Candidate 2").call());
+            const c3 = parseInt(await contract.methods.getVotes("Candidate 3").call());
+
+            animateValue("c1", parseInt(document.getElementById("c1").textContent), c1, 600);
+            animateValue("c2", parseInt(document.getElementById("c2").textContent), c2, 600);
+            animateValue("c3", parseInt(document.getElementById("c3").textContent), c3, 600);
+          } catch (err) {
+            document.getElementById('status').innerText = "⚠️ Error reading blockchain!";
+            console.error(err);
+          }
+        }
+
+        update();
+        setInterval(update, 5000);
+      } catch (err) {
+        document.getElementById('status').innerText = "❌ Failed to connect!";
+        console.error(err);
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>

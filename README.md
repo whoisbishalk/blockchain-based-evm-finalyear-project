@@ -20,30 +20,8 @@ I2C LCD Display & Capacitive Touch Button – User interface components
 Capacitive Touch Button - input buttons
 Female 2 Female Jumper Wire- For Wiring
 
-Connection Details:
-LCD Module
-LCD ||Pin	Raspberry Pi Pin	Pin Number
-GND	||Ground	Pin 6
-VCC	||5V Power	Pin 4
-SDA	||GPIO2 (I2C SDA)	Pin 3
-SCL	||GPIO3 (I2C SCL)	Pin 5
-
-#Capactive Touch Btn
-Touch Button Pin ||	Raspberry Pi Pin	|| Pin Number
-VCC	             || 3.3V Power	      ||Pin 1
-GND	             ||Ground	            ||Pin 9
-BTN1             || GPIO17	          ||Pin 11
-BTN2             ||	GPIO27	          ||Pin 13
-BTN3             ||	GPIO22	          ||Pin 15
-BTN4             ||	GPIO23	          ||Pin 16
-
-
-#Fingerprint Module
-Fingerprint Scanner || Pin	Raspberry Pi Pin	|| Pin Number
-TX	                   RX (GPIO15)	             Pin 10
-RX	                   TX (GPIO14)	             Pin 8
-GND	                   Ground	                   Pin 20
-VCC	                   3.3V Power	               Pin 17
+![image alt](https://github.com/whoisbishalk/blockchain-based-evm-finalyear-project/blob/main/connection1.png?raw=true)
+![image alt](https://github.com/whoisbishalk/blockchain-based-evm-finalyear-project/blob/main/connection2.png?raw=true)
 
 
 How to run the project?
